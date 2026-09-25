@@ -135,11 +135,12 @@ def data(as_json: Annotated[bool, json_option()] = False):
     if as_json:
         _print_json([r.to_dict() for r in reports])
     else:
-        table = Table("store", "kind", "size", "modified", "integrity", "in backup", "")
+        table = Table("store", "kind", "size", "modified", "integrity", "in backup", "", "notes")
         for r in reports:
+            notes = "\n".join([*(f"[yellow]{w}[/yellow]" for w in r.warnings), *(f"[dim]{i}[/dim]" for i in r.info)])
             table.add_row(
                 r.name, r.kind, f"{r.size_bytes / 1e6:.1f} MB", r.modified[:16].replace("T", " "),
-                r.integrity, r.backup, _LEVEL[r.level],
+                r.integrity, r.backup, _LEVEL[r.level], notes,
             )
         console.print(table)
         latest = data_mod.latest_backup()

@@ -8,12 +8,14 @@ personal-infra/scripts/backup-local-first: <backups>/<YYYY-MM-DD>/{databases,vau
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
 import duckdb
+
+from fleet_cli.anomalies import STALE_DAYS, database_notes, vault_notes
 
 HOME = Path.home()
 SYNC_DIR = HOME / "sync"
@@ -35,6 +37,8 @@ class StoreReport:
     integrity: str  # ok | in use | <error>
     backup: str  # "2026-09-15" | "missing" | "not covered"
     level: Level
+    warnings: list[str] = field(default_factory=list)  # unexpected data, e.g. rows lost since backup
+    info: list[str] = field(default_factory=list)  # worth knowing, not a problem (idle, near-empty)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -107,6 +111,12 @@ def _level(integrity: str, backup: str, today: date) -> Level:
     return "ok"
 
 
+def _with_warnings(report: StoreReport) -> StoreReport:
+    if report.warnings and report.level == "ok":
+        report.level = "warn"
+    return report
+
+
 def _dir_size(path: Path) -> int:
     return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
 
@@ -121,8 +131,10 @@ def check_stores(
     backup_dir: Path = BACKUP_DIR,
     extra: dict[str, Path] | None = None,
     today: date | None = None,
+    now: datetime | None = None,
 ) -> list[StoreReport]:
     today = today or datetime.now().astimezone().date()
+    now = now or datetime.now().astimezone()
     backup = latest_backup(backup_dir)
     backup_date = backup.name if backup else None
     reports = []
@@ -132,27 +144,37 @@ def check_stores(
         integrity = {"sqlite": check_sqlite, "duckdb": check_duckdb}.get(kind, lambda _: "unrecognized format")(db)
         in_backup = backup is not None and (backup / "databases" / db.relative_to(sync_dir)).exists()
         status = backup_date if in_backup else "missing"
-        reports.append(StoreReport(
+        report = StoreReport(
             str(db.relative_to(sync_dir)), kind, str(db), db.stat().st_size, _mtime(db),
             integrity, status, _level(integrity, status, today),
-        ))
+        )
+        if integrity == "ok":
+            copy = backup / "databases" / db.relative_to(sync_dir) if in_backup else None
+            report.warnings, report.info = database_notes(db, kind, copy, now)
+        reports.append(_with_warnings(report))
 
     vaults = sorted(d for d in vaults_dir.iterdir() if d.is_dir() and not d.name.startswith(".")) \
         if vaults_dir.exists() else []
     for v in vaults:
         in_backup = backup is not None and (backup / "vaults" / f"{v.name}.zip").exists()
         status = backup_date if in_backup else "missing"
-        reports.append(StoreReport(
+        report = StoreReport(
             f"vault:{v.name}", "vault", str(v), _dir_size(v), _mtime(v), "ok", status,
             _level("ok", status, today),
-        ))
+        )
+        report.warnings = vault_notes(v, backup / "vaults" / f"{v.name}.zip" if in_backup else None)
+        reports.append(_with_warnings(report))
 
     for name, path in (EXTRA_STORES if extra is None else extra).items():
         if not path.exists():
             reports.append(StoreReport(name, "directory", str(path), 0, "", "missing", "not covered", "fail"))
             continue
-        reports.append(StoreReport(
+        report = StoreReport(
             name, "directory", str(path), _dir_size(path), _mtime(path), "ok", "not covered",
             _level("ok", "not covered", today),
-        ))
+        )
+        newest = max((f.stat().st_mtime for f in path.rglob("*") if f.is_file()), default=None)
+        if newest is not None and (age := (now - datetime.fromtimestamp(newest).astimezone()).days) > STALE_DAYS:
+            report.info.append(f"no new files in {age} days")
+        reports.append(report)
     return reports

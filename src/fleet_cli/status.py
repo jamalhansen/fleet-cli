@@ -85,7 +85,7 @@ def data_summary(reports: list[StoreReport]) -> dict:
         "ok": sum(r.level == "ok" for r in reports),
         "total": len(reports),
         "problems": {
-            r.name: f"{r.level}: integrity {r.integrity}, backup {r.backup}"
+            r.name: "; ".join([f"{r.level}: integrity {r.integrity}, backup {r.backup}", *r.warnings])
             for r in reports if r.level != "ok"
         },
     }
