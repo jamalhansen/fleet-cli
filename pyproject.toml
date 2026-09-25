@@ -1,0 +1,35 @@
+[project]
+name = "fleet-cli"
+version = "0.1.0"
+description = "One front door for the local-first fleet: standards audit, generated repo catalog, data-store integrity and backup coverage, and a combined health status."
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.15.0",
+    "click<8.3.2",  # 8.3.2 breaks typer 0.24.1's option parsing (same pin as process-doctor)
+    "rich>=14.3.3",
+    "duckdb>=1.5.0",
+    "local-first-common",
+]
+
+[project.scripts]
+fleet = "fleet_cli.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fleet_cli"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.uv.sources]
+local-first-common = { git = "https://github.com/jamalhansen/local-first-common.git", branch = "main" }
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
