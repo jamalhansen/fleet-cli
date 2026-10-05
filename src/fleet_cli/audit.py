@@ -28,7 +28,8 @@ def check_tracking(repo: Repo) -> Finding:
         return Finding("tracking", "skip", "the library itself")
     # A regex, not the literal call text: the fleet's pre-commit scan counts files containing it.
     files = [
-        str(f.relative_to(repo.path)) for f in repo.source_files
+        str(f.relative_to(repo.path))
+        for f in repo.source_files
         if _REGISTER_CALL.search(f.read_text(encoding="utf-8", errors="ignore"))
     ]
     if len(files) > 1:
@@ -43,7 +44,8 @@ def check_entry_points(repo: Repo) -> Finding:
     if not repo.entry_points:
         return Finding("entry-points", "skip", "no [project.scripts]")
     off = [
-        f"{k} = {v}" for k, v in repo.entry_points.items()
+        f"{k} = {v}"
+        for k, v in repo.entry_points.items()
         if not v.endswith((".cli:app", ".server:main"))  # server:main = a long-running service
     ]
     if off:

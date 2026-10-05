@@ -53,5 +53,8 @@ def test_catalog_write_keeps_notes_and_dry_run_does_not_write(fake_projects, tmp
 def test_repos_lists_fleet(fake_projects):
     result = runner.invoke(cli.app, ["repos", "--json"])
     assert [r["name"] for r in json.loads(result.output)] == [
-        "drifty-tool", "good-tool", "local-first-common", "top-level-tool",
+        "drifty-tool",
+        "good-tool",
+        "local-first-common",
+        "top-level-tool",
     ]

@@ -3,7 +3,10 @@ from fleet_cli.repos import Repo, all_repos, fleet_repos
 
 def test_fleet_is_local_first_python_repos_plus_top_level_library_users(projects):
     assert [r.name for r in fleet_repos(projects)] == [
-        "drifty-tool", "good-tool", "local-first-common", "top-level-tool",
+        "drifty-tool",
+        "good-tool",
+        "local-first-common",
+        "top-level-tool",
     ]
 
 

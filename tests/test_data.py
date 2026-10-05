@@ -42,8 +42,9 @@ def backup(home: dict[str, Path], day: str, dbs: list[str], vaults: list[str]) -
 
 
 def run(home):
-    reports = check_stores(home["sync"], home["vaults"], home["backups"],
-                           extra={"journal": home["journal"]}, today=TODAY)
+    reports = check_stores(
+        home["sync"], home["vaults"], home["backups"], extra={"journal": home["journal"]}, today=TODAY
+    )
     return {r.name: r for r in reports}
 
 
@@ -57,7 +58,11 @@ def test_integrity_and_backup_levels(home):
     backup(home, "2026-09-24", ["tool/good.db", "tool/log.duckdb"], ["Notes"])
     r = run(home)
     assert set(r) == {"tool/good.db", "tool/log.duckdb", "tool/broken.db", "vault:Notes", "journal"}
-    assert (r["tool/good.db"].integrity, r["tool/good.db"].backup, r["tool/good.db"].level) == ("ok", "2026-09-24", "ok")
+    assert (r["tool/good.db"].integrity, r["tool/good.db"].backup, r["tool/good.db"].level) == (
+        "ok",
+        "2026-09-24",
+        "ok",
+    )
     assert r["tool/log.duckdb"].level == "ok"
     assert r["tool/broken.db"].level == "fail"
     assert r["tool/broken.db"].integrity != "ok"
@@ -79,8 +84,9 @@ def test_no_backups_at_all(home):
 
 
 def test_missing_extra_store_fails(home, tmp_path):
-    reports = check_stores(home["sync"], home["vaults"], home["backups"],
-                           extra={"gone": tmp_path / "nope"}, today=TODAY)
+    reports = check_stores(
+        home["sync"], home["vaults"], home["backups"], extra={"gone": tmp_path / "nope"}, today=TODAY
+    )
     assert {r.name: r.level for r in reports}["gone"] == "fail"
 
 
@@ -119,8 +125,14 @@ class TestUnexpectedData:
         conn.execute("CREATE TABLE t (x)")
         conn.commit()
         conn.close()
-        reports = check_stores(home["sync"], home["vaults"], home["backups"], extra={"journal": home["journal"]},
-                               today=TODAY, now=datetime(2027, 1, 1, tzinfo=UTC))
+        reports = check_stores(
+            home["sync"],
+            home["vaults"],
+            home["backups"],
+            extra={"journal": home["journal"]},
+            today=TODAY,
+            now=datetime(2027, 1, 1, tzinfo=UTC),
+        )
         r = {x.name: x for x in reports}
         assert r["tool/empty.db"].warnings == ["empty: no rows in any table"]
         assert "only 1 row(s)" in r["tool/good.db"].info

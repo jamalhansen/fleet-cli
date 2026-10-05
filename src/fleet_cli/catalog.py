@@ -62,18 +62,20 @@ def build_entries(repos: list[Repo], root: Path = PROJECTS) -> list[Entry]:
         siblings = {owner[m] for m in imported if m in owner and owner[m] not in (r.name, LIBRARY)}
         couplings = sorted(siblings | set(r.path_dependencies))
         date_, subject = r.last_commit
-        entries.append(Entry(
-            name=r.name,
-            location=str(r.path.relative_to(root)),
-            kind="python" if r.is_python else "node" if r.package_json else "other",
-            description=r.description,
-            entry_points=r.entry_points,
-            dependencies=[d for d in r.dependencies if d != LIBRARY],
-            library_modules=library_modules_used(r.source_text, known) if r.is_python else [],
-            couplings=couplings,
-            remote=r.remote,
-            last_commit=f"{date_} {subject}".strip(),
-        ))
+        entries.append(
+            Entry(
+                name=r.name,
+                location=str(r.path.relative_to(root)),
+                kind="python" if r.is_python else "node" if r.package_json else "other",
+                description=r.description,
+                entry_points=r.entry_points,
+                dependencies=[d for d in r.dependencies if d != LIBRARY],
+                library_modules=library_modules_used(r.source_text, known) if r.is_python else [],
+                couplings=couplings,
+                remote=r.remote,
+                last_commit=f"{date_} {subject}".strip(),
+            )
+        )
     return entries
 
 

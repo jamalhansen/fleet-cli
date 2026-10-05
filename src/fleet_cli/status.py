@@ -38,9 +38,7 @@ def repo_health(path: Path = REPO_HEALTH_FILE) -> dict:
     if not path.exists():
         return {"error": f"{path} not found; run repo-health-run"}
     snap = json.loads(path.read_text(encoding="utf-8"))
-    unhealthy = {
-        name: reasons for name, r in snap["repos"].items() if (reasons := _unhealthy_reasons(r))
-    }
+    unhealthy = {name: reasons for name, r in snap["repos"].items() if (reasons := _unhealthy_reasons(r))}
     unpushed = {name: r["git"]["unpushed"] for name, r in snap["repos"].items() if r["git"]["unpushed"]}
     return {
         "generated_at": snap["generated_at"],
@@ -86,7 +84,8 @@ def data_summary(reports: list[StoreReport]) -> dict:
         "total": len(reports),
         "problems": {
             r.name: "; ".join([f"{r.level}: integrity {r.integrity}, backup {r.backup}", *r.warnings])
-            for r in reports if r.level != "ok"
+            for r in reports
+            if r.level != "ok"
         },
     }
 

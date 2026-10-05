@@ -42,10 +42,7 @@ def repos(
     with timed_run(TOOL, None, source_location="repos") as run:
         found = all_repos() if all_ else fleet_repos()
         run.item_count = len(found)
-    rows = [
-        {"name": r.name, "location": str(r.path.relative_to(PROJECTS)), "remote": r.remote}
-        for r in found
-    ]
+    rows = [{"name": r.name, "location": str(r.path.relative_to(PROJECTS)), "remote": r.remote} for r in found]
     if as_json:
         _print_json(rows)
         return
@@ -89,8 +86,10 @@ def audit(
         for name, fs in results.items():
             table.add_row(name, *(_MARK[f.status] for f in fs))
         console.print(table)
-        console.print(f"[dim]{_MARK['fail']} fail  {_MARK['info']} info  {_MARK['skip']} n/a — "
-                      f"`fleet audit --failures` for details[/dim]")
+        console.print(
+            f"[dim]{_MARK['fail']} fail  {_MARK['info']} info  {_MARK['skip']} n/a — "
+            f"`fleet audit --failures` for details[/dim]"
+        )
     if not as_json:
         console.print(f"{len(results)} repos, {n_fail} failing checks")
     if n_fail:
@@ -139,8 +138,14 @@ def data(as_json: Annotated[bool, json_option()] = False):
         for r in reports:
             notes = "\n".join([*(f"[yellow]{w}[/yellow]" for w in r.warnings), *(f"[dim]{i}[/dim]" for i in r.info)])
             table.add_row(
-                r.name, r.kind, f"{r.size_bytes / 1e6:.1f} MB", r.modified[:16].replace("T", " "),
-                r.integrity, r.backup, _LEVEL[r.level], notes,
+                r.name,
+                r.kind,
+                f"{r.size_bytes / 1e6:.1f} MB",
+                r.modified[:16].replace("T", " "),
+                r.integrity,
+                r.backup,
+                _LEVEL[r.level],
+                notes,
             )
         console.print(table)
         latest = data_mod.latest_backup()
@@ -184,18 +189,27 @@ def _print_status(s: dict) -> None:
     if "error" in repos_:
         _section("repos", False, repos_["error"], {})
     else:
-        _section("repos", not repos_["unhealthy"],
-                 f"{repos_['healthy']}/{repos_['total']} healthy (snapshot {_local(repos_['generated_at'])})",
-                 repos_["unhealthy"])
+        _section(
+            "repos",
+            not repos_["unhealthy"],
+            f"{repos_['healthy']}/{repos_['total']} healthy (snapshot {_local(repos_['generated_at'])})",
+            repos_["unhealthy"],
+        )
         if repos_["unpushed"]:
-            console.print("    [dim]unpushed: " + ", ".join(f"{k} ({v})" for k, v in repos_["unpushed"].items()) + "[/dim]")
+            console.print(
+                "    [dim]unpushed: " + ", ".join(f"{k} ({v})" for k, v in repos_["unpushed"].items()) + "[/dim]"
+            )
     jobs_ = s["jobs"]
     if "error" in jobs_:
         _section("jobs", False, jobs_["error"], {})
     else:
         _section("jobs", not jobs_["failing"], f"{jobs_['ok']}/{jobs_['total']} on schedule", jobs_["failing"])
     degraded = s["degraded_tools"]
-    _section("tools", not degraded, "none degraded" if not degraded else f"{len(degraded)} degraded",
-             {d: "failing most calls" for d in degraded})
+    _section(
+        "tools",
+        not degraded,
+        "none degraded" if not degraded else f"{len(degraded)} degraded",
+        {d: "failing most calls" for d in degraded},
+    )
     data_ = s["data"]
     _section("data", not data_["problems"], f"{data_['ok']}/{data_['total']} stores ok", data_["problems"])

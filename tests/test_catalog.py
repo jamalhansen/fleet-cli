@@ -12,7 +12,9 @@ from fleet_cli.repos import all_repos
 
 def test_library_module_names(projects):
     assert library_module_names(projects / "local-first" / "local-first-common") == {
-        "obsidian", "tracking", "providers",
+        "obsidian",
+        "tracking",
+        "providers",
     }
 
 
@@ -49,7 +51,7 @@ def test_render_carries_notes_and_groups(projects):
     text = render_markdown(entries, {"good-tool": ["**Note:** hand-verified"]}, date(2026, 9, 25))
     assert "Generated: 2026-09-25. 5 repos." in text
     assert text.index("## Shared library") < text.index("## Top-level repos") < text.index("## `local-first/` repos")
-    good = text[text.index("### good-tool"):]
+    good = text[text.index("### good-tool") :]
     assert good.split("\n\n")[0].endswith("**Note:** hand-verified")
     assert "- drifty-tool → good-tool" in text
     assert "**Remote:** **none**" in text

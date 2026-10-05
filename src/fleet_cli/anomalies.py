@@ -6,6 +6,7 @@ so a drop is worth a look), a table that disappeared, a vault with noticeably fe
 notes. Near-empty and long-unwritten stores are noted as info -- often just an idle
 tool, sometimes a pipeline that quietly stopped.
 """
+
 import sqlite3
 import zipfile
 from datetime import datetime
@@ -24,8 +25,12 @@ def table_counts(path: Path, kind: str) -> dict[str, int] | None:
         if kind == "sqlite":
             conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
             try:
-                names = [r[0] for r in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")]
+                names = [
+                    r[0]
+                    for r in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+                    )
+                ]
                 return {n: conn.execute(f'SELECT count(*) FROM "{n}"').fetchone()[0] for n in names}
             finally:
                 conn.close()
@@ -87,10 +92,7 @@ def _note_count_on_disk(vault: Path) -> int:
 def _note_count_in_zip(zip_path: Path) -> int | None:
     try:
         with zipfile.ZipFile(zip_path) as z:
-            return sum(
-                1 for n in z.namelist()
-                if n.endswith(".md") and "/.obsidian/" not in n and "/.trash/" not in n
-            )
+            return sum(1 for n in z.namelist() if n.endswith(".md") and "/.obsidian/" not in n and "/.trash/" not in n)
     except (zipfile.BadZipFile, OSError):
         return None
 

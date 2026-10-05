@@ -13,9 +13,7 @@ from pathlib import Path
 PROJECTS = Path.home() / "projects"
 LIBRARY = "local-first-common"
 EXCLUDE = frozenset({"local-ai-tool-template", "claude-skills", "jamalhansen.com"})
-_SKIP_DIRS = frozenset(
-    {".venv", "venv", "tests", "test", "build", "dist", "node_modules", "__pycache__", ".git"}
-)
+_SKIP_DIRS = frozenset({".venv", "venv", "tests", "test", "build", "dist", "node_modules", "__pycache__", ".git"})
 
 
 def _requirement_name(spec: str) -> str:
@@ -50,11 +48,7 @@ class Repo:
 
     @property
     def description(self) -> str:
-        return (
-            self.pyproject.get("project", {}).get("description")
-            or self.package_json.get("description")
-            or ""
-        )
+        return self.pyproject.get("project", {}).get("description") or self.package_json.get("description") or ""
 
     @property
     def dependencies(self) -> list[str]:
@@ -81,23 +75,19 @@ class Repo:
     def path_dependencies(self) -> list[str]:
         """Sibling repos pulled in as local path dependencies (other than the library)."""
         return sorted(
-            name for name, src in self.uv_sources.items()
-            if isinstance(src, dict) and "path" in src and name != LIBRARY
+            name for name, src in self.uv_sources.items() if isinstance(src, dict) and "path" in src and name != LIBRARY
         )
 
     @cached_property
     def packages(self) -> list[str]:
         """Top-level importable package names the repo ships."""
         root = self.path / "src" if (self.path / "src").is_dir() else self.path
-        return sorted(
-            p.parent.name for p in root.glob("*/__init__.py") if p.parent.name not in _SKIP_DIRS
-        )
+        return sorted(p.parent.name for p in root.glob("*/__init__.py") if p.parent.name not in _SKIP_DIRS)
 
     @cached_property
     def source_files(self) -> list[Path]:
         return sorted(
-            p for p in self.path.rglob("*.py")
-            if not _SKIP_DIRS.intersection(p.relative_to(self.path).parts[:-1])
+            p for p in self.path.rglob("*.py") if not _SKIP_DIRS.intersection(p.relative_to(self.path).parts[:-1])
         )
 
     @cached_property
@@ -137,6 +127,7 @@ def fleet_repos(root: Path = PROJECTS) -> list[Repo]:
     Same rule repo-health-run uses. Top-level tool repos stay where they are because
     vault hooks (synced to other machines) call them by path.
     """
+
     def ok(p: Path) -> bool:
         return p.is_dir() and (p / "pyproject.toml").exists() and p.name not in EXCLUDE
 

@@ -18,10 +18,16 @@ def _repo(lint=True, tests=True, hooks=True, remote=True, install=True, unpushed
 
 def test_repo_health_reasons(tmp_path: Path):
     f = tmp_path / "rh.json"
-    f.write_text(json.dumps({
-        "generated_at": "2026-09-25T05:00:00+00:00", "healthy": 1, "total": 3,
-        "repos": {"a": _repo(), "b": _repo(lint=False, remote=False), "c": _repo(install=False, unpushed=2)},
-    }))
+    f.write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-09-25T05:00:00+00:00",
+                "healthy": 1,
+                "total": 3,
+                "repos": {"a": _repo(), "b": _repo(lint=False, remote=False), "c": _repo(install=False, unpushed=2)},
+            }
+        )
+    )
     h = repo_health(f)
     assert h["unhealthy"] == {"b": ["lint (3 errors)", "no remote"], "c": ["installed copy stale (4 files)"]}
     assert h["unpushed"] == {"c": 2}
@@ -62,8 +68,12 @@ def test_degraded_tools(tmp_path: Path):
 
 
 def test_overall_ok():
-    good = {"repos": {"unhealthy": {}}, "jobs": {"failing": {}}, "degraded_tools": [],
-            "data": data_summary([StoreReport("s", "sqlite", "/p", 1, "", "ok", "2026-09-24", "ok")])}
+    good = {
+        "repos": {"unhealthy": {}},
+        "jobs": {"failing": {}},
+        "degraded_tools": [],
+        "data": data_summary([StoreReport("s", "sqlite", "/p", 1, "", "ok", "2026-09-24", "ok")]),
+    }
     assert overall_ok(good)
     assert not overall_ok({**good, "degraded_tools": ["x"]})
     assert not overall_ok({**good, "jobs": {"error": "boom"}})

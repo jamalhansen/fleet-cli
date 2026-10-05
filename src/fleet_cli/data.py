@@ -47,10 +47,7 @@ class StoreReport:
 def discover_databases(sync_dir: Path = SYNC_DIR) -> list[Path]:
     """Same discovery rule as backup-local-first."""
     found = [*sync_dir.glob("**/*.db"), *sync_dir.glob("**/*.duckdb")]
-    return sorted(
-        p for p in found
-        if p.is_file() and ".sync-conflict" not in p.name and not p.name.startswith(".")
-    )
+    return sorted(p for p in found if p.is_file() and ".sync-conflict" not in p.name and not p.name.startswith("."))
 
 
 def detect_kind(path: Path) -> str:
@@ -145,21 +142,36 @@ def check_stores(
         in_backup = backup is not None and (backup / "databases" / db.relative_to(sync_dir)).exists()
         status = backup_date if in_backup else "missing"
         report = StoreReport(
-            str(db.relative_to(sync_dir)), kind, str(db), db.stat().st_size, _mtime(db),
-            integrity, status, _level(integrity, status, today),
+            str(db.relative_to(sync_dir)),
+            kind,
+            str(db),
+            db.stat().st_size,
+            _mtime(db),
+            integrity,
+            status,
+            _level(integrity, status, today),
         )
         if integrity == "ok":
             copy = backup / "databases" / db.relative_to(sync_dir) if in_backup else None
             report.warnings, report.info = database_notes(db, kind, copy, now)
         reports.append(_with_warnings(report))
 
-    vaults = sorted(d for d in vaults_dir.iterdir() if d.is_dir() and not d.name.startswith(".")) \
-        if vaults_dir.exists() else []
+    vaults = (
+        sorted(d for d in vaults_dir.iterdir() if d.is_dir() and not d.name.startswith("."))
+        if vaults_dir.exists()
+        else []
+    )
     for v in vaults:
         in_backup = backup is not None and (backup / "vaults" / f"{v.name}.zip").exists()
         status = backup_date if in_backup else "missing"
         report = StoreReport(
-            f"vault:{v.name}", "vault", str(v), _dir_size(v), _mtime(v), "ok", status,
+            f"vault:{v.name}",
+            "vault",
+            str(v),
+            _dir_size(v),
+            _mtime(v),
+            "ok",
+            status,
             _level("ok", status, today),
         )
         report.warnings = vault_notes(v, backup / "vaults" / f"{v.name}.zip" if in_backup else None)
@@ -170,7 +182,13 @@ def check_stores(
             reports.append(StoreReport(name, "directory", str(path), 0, "", "missing", "not covered", "fail"))
             continue
         report = StoreReport(
-            name, "directory", str(path), _dir_size(path), _mtime(path), "ok", "not covered",
+            name,
+            "directory",
+            str(path),
+            _dir_size(path),
+            _mtime(path),
+            "ok",
+            "not covered",
             _level("ok", "not covered", today),
         )
         newest = max((f.stat().st_mtime for f in path.rglob("*") if f.is_file()), default=None)
