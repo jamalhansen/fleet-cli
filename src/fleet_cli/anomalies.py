@@ -41,7 +41,9 @@ def table_counts(path: Path, kind: str) -> dict[str, int] | None:
                     "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'"
                 ).fetchall()
                 return {
-                    (t if s == "main" else f"{s}.{t}"): conn.execute(f'SELECT count(*) FROM "{s}"."{t}"').fetchone()[0]
+                    (t if s == "main" else f"{s}.{t}"): (
+                        conn.execute(f'SELECT count(*) FROM "{s}"."{t}"').fetchone() or (0,)
+                    )[0]
                     for s, t in tables
                 }
             finally:

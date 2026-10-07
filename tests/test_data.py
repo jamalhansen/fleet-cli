@@ -93,7 +93,8 @@ def test_missing_extra_store_fails(home, tmp_path):
 def test_latest_backup_ignores_non_dates(home):
     backup(home, "2026-09-15", [], [])
     (home["backups"] / "notes").mkdir()
-    assert latest_backup(home["backups"]).name == "2026-09-15"
+    latest = latest_backup(home["backups"])
+    assert latest is not None and latest.name == "2026-09-15"
     assert latest_backup(home["backups"] / "absent") is None
 
 

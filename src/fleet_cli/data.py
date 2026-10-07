@@ -139,8 +139,9 @@ def check_stores(
     for db in discover_databases(sync_dir):
         kind = detect_kind(db)
         integrity = {"sqlite": check_sqlite, "duckdb": check_duckdb}.get(kind, lambda _: "unrecognized format")(db)
-        in_backup = backup is not None and (backup / "databases" / db.relative_to(sync_dir)).exists()
-        status = backup_date if in_backup else "missing"
+        copy_path = backup / "databases" / db.relative_to(sync_dir) if backup is not None else None
+        in_backup = copy_path is not None and copy_path.exists()
+        status = backup_date if in_backup and backup_date else "missing"
         report = StoreReport(
             str(db.relative_to(sync_dir)),
             kind,
@@ -152,7 +153,7 @@ def check_stores(
             _level(integrity, status, today),
         )
         if integrity == "ok":
-            copy = backup / "databases" / db.relative_to(sync_dir) if in_backup else None
+            copy = copy_path if in_backup else None
             report.warnings, report.info = database_notes(db, kind, copy, now)
         reports.append(_with_warnings(report))
 
@@ -162,8 +163,9 @@ def check_stores(
         else []
     )
     for v in vaults:
-        in_backup = backup is not None and (backup / "vaults" / f"{v.name}.zip").exists()
-        status = backup_date if in_backup else "missing"
+        zip_path = backup / "vaults" / f"{v.name}.zip" if backup is not None else None
+        in_backup = zip_path is not None and zip_path.exists()
+        status = backup_date if in_backup and backup_date else "missing"
         report = StoreReport(
             f"vault:{v.name}",
             "vault",
@@ -174,7 +176,7 @@ def check_stores(
             status,
             _level("ok", status, today),
         )
-        report.warnings = vault_notes(v, backup / "vaults" / f"{v.name}.zip" if in_backup else None)
+        report.warnings = vault_notes(v, zip_path if in_backup else None)
         reports.append(_with_warnings(report))
 
     for name, path in (EXTRA_STORES if extra is None else extra).items():
