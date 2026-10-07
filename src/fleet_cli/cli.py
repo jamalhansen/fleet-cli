@@ -16,6 +16,7 @@ from rich.table import Table
 from fleet_cli import audit as audit_mod
 from fleet_cli import catalog as catalog_mod
 from fleet_cli import data as data_mod
+from fleet_cli import relock as relock_mod
 from fleet_cli import status as status_mod
 from fleet_cli.repos import PROJECTS, all_repos, fleet_repos
 
@@ -171,6 +172,45 @@ def status(as_json: Annotated[bool, json_option()] = False):
     else:
         _print_status(summary)
     if not ok:
+        raise typer.Exit(1)
+
+
+_RELOCK_STYLE = {
+    "pushed": "[green]pushed[/green]",
+    "committed": "[yellow]committed[/yellow]",
+    "would-update": "[cyan]would update[/cyan]",
+    "current": "[dim]current[/dim]",
+    "skipped": "[dim]skipped[/dim]",
+    "failed": "[red]failed[/red]",
+}
+
+
+@app.command()
+def relock(
+    repo: Annotated[list[str] | None, typer.Option("--repo", "-r", help="Only these repos.")] = None,
+    push: Annotated[bool, typer.Option("--push", help="Push each re-pinned repo (siblings first).")] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", "-n", help="Show which repos would move; change nothing.")
+    ] = False,
+    as_json: Annotated[bool, json_option()] = False,
+):
+    """Re-pin repos to local-first-common's current main. The commit hook runs each repo's tests;
+    a repo whose tests reject the new pin is restored and reported. Exits 1 if any repo failed."""
+    with timed_run(TOOL, None, source_location="relock") as run:
+        found = [r for r in fleet_repos() if not repo or r.name in repo]
+        results = relock_mod.relock_all(found, push=push, dry_run=dry_run)
+        run.item_count = sum(1 for r in results if r.status in ("pushed", "committed"))
+    if as_json:
+        _print_json([r.__dict__ for r in results])
+    else:
+        table = Table("repo", "result", "pin", "detail")
+        for r in results:
+            if r.status == "skipped" and r.detail == "no local-first-common pin":
+                continue
+            pin = f"{r.old[:7]} -> {r.new[:7]}" if r.new and r.new != r.old else r.old[:7]
+            table.add_row(r.repo, _RELOCK_STYLE[r.status], pin, r.detail)
+        console.print(table)
+    if any(r.status == "failed" for r in results):
         raise typer.Exit(1)
 
 
