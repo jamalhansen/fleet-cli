@@ -16,6 +16,7 @@ from rich.table import Table
 from fleet_cli import audit as audit_mod
 from fleet_cli import catalog as catalog_mod
 from fleet_cli import data as data_mod
+from fleet_cli import deploy as deploy_mod
 from fleet_cli import relock as relock_mod
 from fleet_cli import status as status_mod
 from fleet_cli.repos import PROJECTS, all_repos, fleet_repos
@@ -211,6 +212,69 @@ def relock(
             table.add_row(r.repo, _RELOCK_STYLE[r.status], pin, r.detail)
         console.print(table)
     if any(r.status == "failed" for r in results):
+        raise typer.Exit(1)
+
+
+@app.command()
+def deploy(
+    repo: Annotated[list[str] | None, typer.Option("--repo", "-r", help="Deploy these repos.")] = None,
+    stale: Annotated[
+        bool, typer.Option("--stale", help="Deploy every installed tool running code older than its repo.")
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", "-n", help="Show what would be deployed; change nothing.")
+    ] = False,
+    as_json: Annotated[bool, json_option()] = False,
+):
+    """Make committed code the code that runs: reinstall stale uv tools (and restart their services).
+
+    With no --repo or --stale, shows each installed tool's state -- the same check the dashboard's
+    "installed copy stale" pill uses. Exits 1 if any deploy failed."""
+    with timed_run(TOOL, None, source_location="deploy") as run:
+        states = deploy_mod.install_states(fleet_repos())
+        by_name = {r.name: r for r in fleet_repos()}
+        if repo:
+            targets = [by_name[n] for n in repo if n in by_name]
+            missing = sorted(set(repo) - set(by_name))
+            if missing:
+                typer.echo(f"Not fleet repos: {', '.join(missing)}", err=True)
+                raise typer.Exit(1)
+        elif stale:
+            targets = [by_name[s.repo] for s in states if s.stale]
+        else:
+            targets = []
+        results = [] if dry_run else [deploy_mod.deploy(t) for t in targets]
+        run.item_count = sum(1 for r in results if r.ok)
+    if as_json:
+        _print_json(
+            {
+                "installs": [s.__dict__ | {"stale": s.stale} for s in states],
+                "deployed": [r.__dict__ for r in results],
+                "would_deploy": [t.name for t in targets] if dry_run else [],
+            }
+        )
+        return
+    if not targets:
+        table = Table("repo", "tool", "install")
+        for s in states:
+            if s.installed:
+                table.add_row(s.repo, s.tool, f"[yellow]{s.summary}[/yellow]" if s.stale else f"[dim]{s.summary}[/dim]")
+        console.print(table)
+        n = sum(1 for s in states if s.stale)
+        console.print(
+            f"[dim]{n} stale -- `fleet deploy --stale` redeploys them[/dim]"
+            if n
+            else "[dim]all installed tools current[/dim]"
+        )
+        return
+    if dry_run:
+        console.print("would deploy: " + ", ".join(t.name for t in targets))
+        return
+    table = Table("repo", "result", "detail")
+    for r in results:
+        table.add_row(r.repo, "[green]ok[/green]" if r.ok else "[red]FAILED[/red]", r.detail)
+    console.print(table)
+    if any(not r.ok for r in results):
         raise typer.Exit(1)
 
 
